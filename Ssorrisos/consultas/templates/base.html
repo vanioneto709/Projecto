@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ssorrisos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url("/static/img/background.jpg");
+            background-size: cover;
+            background-repeat: no-repeat;
+            color: white;
+        }
+
+        .container{
+            margin-top: 10%;
+            justify-content: center;
+            justify-items: center;
+            
+        }
+        
+        .form-container {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 2rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/">Ssorrisos</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" title="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarContent">
+      <ul class="navbar-nav ms-auto">
+        {% if user.is_authenticated %}
+            {% if user.is_superuser %}
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin/">Admin</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/gerenciar-consultas/">Gerenciar Consultas</a>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="/minhas-consultas/">Minhas Consultas</a>
+                </li>
+            {% endif %}
+            <li class="nav-item">
+                <form method="post" action="/logout/">
+                    {% csrf_token %}
+                    <button class="btn btn-link nav-link" type="submit">Logout</button>
+                </form>
+            </li>
+        {% else %}
+            <li class="nav-item">
+                <a class="nav-link" href="/login/">Login</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/cadastro/">Cadastro</a>
+            </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+f2QJlf2uh6M8NSI8X1xgZy/1wZVj" crossorigin="anonymous"></script>
+</body>
+</html>
