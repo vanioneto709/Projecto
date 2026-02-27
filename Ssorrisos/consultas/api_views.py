@@ -12,3 +12,11 @@ def minhas_consultas_api(request):
     consultas = Consulta.objects.filter(paciente=request.user)
     serializer = ConsultaSerializer(consultas, many=True)
     return Response(serializer.data)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def me_api(request):
+    return Response({
+        "id": request.user.id,
+        "username": request.user.username,
+        "email": request.user.email,
+    })

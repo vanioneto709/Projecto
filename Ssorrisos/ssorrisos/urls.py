@@ -1,17 +1,22 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.contrib.auth.views import LogoutView
 from django.http import JsonResponse
 
-# Endpoint de teste seguro
-def test_api(request):
-    return JsonResponse({"status": "ok", "from": "django"})
+def api_root(request):
+    return JsonResponse({
+        "message": "API Ssorrisos funcionando!",
+        "endpoints": {
+            "admin": "/admin/",
+            "api": "/api/",
+            "login": "/api/login/",
+            "refresh": "/api/token/refresh/",
+            "me": "/api/me/",
+            "consultas": "/api/minhas-consultas/"
+        }
+    })
 
 urlpatterns = [
+    path('', api_root),
     path('admin/', admin.site.urls),
-    path('', include('consultas.urls')),  # mantém tudo que já funciona
-    path('logout/', LogoutView.as_view(), name='logout'),
-    
-    # Rota de teste
-    path('api/test/', test_api),
+    path('api/', include('consultas.api_urls')),
 ]
