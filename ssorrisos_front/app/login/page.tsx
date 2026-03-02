@@ -16,7 +16,7 @@ export default function LoginPage() {
 
     try {
       await authService.login(username, password);
-      router.push("/");
+      router.push("/dashboard");
     } catch {
       setError("Usuário ou senha inválidos");
     }

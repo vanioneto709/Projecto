@@ -9,12 +9,9 @@ import { authService } from "@/services/auth";
 export default function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<any>(null);
-
   useEffect(() => {
-    setIsLoggedIn(authService.isAuthenticated());
-    setUser(authService.getUser());
-  }, []);
+  setIsLoggedIn(authService.isAuthenticated());
+}, []);
 
   const handleMarcarConsulta = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!isLoggedIn) {
@@ -57,7 +54,7 @@ export default function HomePage() {
 
           {isLoggedIn ? (
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">Olá, {user?.username}</span>
+              <span className="text-sm text-gray-600">Olá!</span>
               <Link
                 href="/dashboard"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition"
