@@ -2,28 +2,34 @@ import axios from "axios";
 
 const API_URL = "http://127.0.0.1:8000/api";
 
+type LoginResponse = {
+  access: string;
+  refresh: string;
+};
+
 export const authService = {
   async login(username: string, password: string) {
-    const response = await axios.post<any>(`${API_URL}/login/`, {
+    const response = await axios.post<LoginResponse>(`${API_URL}/login/`, {
       username,
       password,
     });
 
-    const token = response.data.access;
+    const { access, refresh } = response.data;
 
-    // salva token em cookie (middleware precisa disso)
-    document.cookie = `token=${token}; path=/`;
+
+    localStorage.setItem("access", access);
+    localStorage.setItem("refresh", refresh);
 
     return response.data;
   },
 
   logout() {
-    document.cookie = "token=; Max-Age=0; path=/";
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
   },
 
   getToken() {
-    const match = document.cookie.match(/token=([^;]+)/);
-    return match ? match[1] : null;
+    return localStorage.getItem("access");
   },
 
   isAuthenticated() {

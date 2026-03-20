@@ -163,15 +163,16 @@ export default function HomePage() {
           </p>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: "Clínica SSorrisos", status: "Ativa" },
-              { name: "Somar Sorrisos", status: "Em breve" },
-              { name: "FarmaCabenda", status: "Em breve" },
-            ].map((clinic) => (
-              <div
-                key={clinic.name}
-                className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition"
-              >
+           {[
+  { name: "Clínica SSorrisos", status: "Ativa", link: "test-template" },
+  { name: "Somar Sorrisos", status: "Em breve", link: "/clinicas/somar-sorrisos" },
+  { name: "FarmaCabenda", status: "Em breve", link: "/clinicas/farmacabenda" },
+].map((clinic) => (
+  <Link
+    key={clinic.name}
+    href={clinic.link}
+    className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition block"
+  >
                 <p className="font-semibold text-lg">{clinic.name}</p>
                 <p className="text-gray-500 text-sm mt-2">
                   {clinic.status === "Ativa" ? (
@@ -180,7 +181,7 @@ export default function HomePage() {
                     <span className="text-gray-400">{clinic.status}</span>
                   )}
                 </p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

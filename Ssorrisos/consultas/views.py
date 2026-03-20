@@ -6,7 +6,6 @@ from .forms import RegistroForm, ConsultaForm
 from .models import Consulta
 from django.contrib.auth.forms import UserCreationForm
 
-
 def home_view(request):
     return render(request, 'home.html')
 

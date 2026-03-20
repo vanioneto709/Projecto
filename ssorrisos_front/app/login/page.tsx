@@ -2,58 +2,152 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { authService } from "@/services/auth";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, LogIn, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
+
+  const router = useRouter();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
-      await authService.login(username, password);
-      router.push("/dashboard");
-    } catch {
-      setError("Usuário ou senha inválidos");
+
+      const res = await fetch("http://127.0.0.1:8000/api/login/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username,
+          password
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError("Usuário ou senha inválidos");
+        setIsLoading(false);
+        return;
+      }
+
+      // guardar tokens
+      localStorage.setItem("access", data.access);
+      localStorage.setItem("refresh", data.refresh);
+
+      // descobrir tipo de utilizador
+      const userRes = await fetch("http://127.0.0.1:8000/api/me/", {
+        headers: {
+          Authorization: `Bearer ${data.access}`
+        }
+      });
+
+      const userData = await userRes.json();
+
+      // redirecionamento inteligente
+      if (userData.tipo === "paciente") {
+        router.push("/dashboard-paciente");
+      } else if (userData.tipo === "medico") {
+        router.push("/dashboard-medico");
+      } else {
+        router.push("/dashboard");
+      }
+
+    } catch (err) {
+      setError("Erro no servidor");
     }
+
+    setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-xl shadow-md w-full max-w-sm"
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden relative">
+
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6 }}
+        className="w-full max-w-md relative z-10 rounded-2xl p-8 md:p-10 backdrop-blur-xl border border-border/50"
+        style={{ background: "hsl(220 35% 18% / 0.8)" }}
       >
-        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
 
-        <input
-          className="w-full mb-4 p-2 border rounded"
-          placeholder="Usuário"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 mb-4">
+            <Sparkles className="w-6 h-6 text-gold" />
+            <span className="text-sm font-medium text-muted-foreground tracking-widest uppercase">
+              Bem-vindo de volta
+            </span>
+          </div>
 
-        <input
-          type="password"
-          className="w-full mb-4 p-2 border rounded"
-          placeholder="Senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+          <h1 className="text-3xl font-bold text-white">
+            Login
+          </h1>
+        </div>
 
-        {error && <p className="text-red-500 mb-4">{error}</p>}
+        <form onSubmit={handleSubmit} className="space-y-5">
 
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-        >
-          Entrar
-        </button>
-      </form>
+          <input
+            type="text"
+            placeholder="Utilizador"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-border/50 bg-gray-800 text-white"
+          />
+
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-border/50 bg-gray-800 text-white"
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+            >
+              {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
+            </button>
+          </div>
+
+          {error && (
+            <p className="text-red-400 text-sm text-center">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 rounded-xl bg-yellow-500 text-black font-semibold"
+          >
+            {isLoading ? "Entrando..." : "Entrar"}
+          </button>
+
+        </form>
+
+        <p className="text-center mt-6 text-sm text-gray-400">
+          Não tem conta?{" "}
+          <Link href="/cadastro" className="text-yellow-400">
+            Criar conta
+          </Link>
+        </p>
+
+      </motion.div>
+
     </div>
   );
 }
