@@ -56,12 +56,12 @@ export default function LoginPage() {
       const userData = await userRes.json();
 
       // redirecionamento inteligente
-      if (userData.tipo === "paciente") {
-        router.push("/dashboard-paciente");
+      if (userData.tipo === "admin") {
+        router.push("/dashboard");
       } else if (userData.tipo === "medico") {
         router.push("/dashboard-medico");
       } else {
-        router.push("/dashboard");
+        router.push("/dashboard-paciente");
       }
 
     } catch (err) {

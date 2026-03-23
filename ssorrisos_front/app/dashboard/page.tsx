@@ -2,323 +2,327 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import {
-  Users,
-  Calendar,
-  DollarSign,
-  Activity,
-  Menu,
-  Bell,
-} from "lucide-react";
-
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from "recharts";
-
+import { Menu, Bell } from "lucide-react";
 import { authService } from "@/services/auth";
 
-const [consultas, setConsultas] = useState<any[]>([]);
-const [loading, setLoading] = useState(true);
-useEffect(() => {
+export default function Dashboard() {
+
+  const router = useRouter();
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [consultas, setConsultas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showConsultaModal, setShowConsultaModal] = useState(false);
+
+  // 👤 usuário
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [tipo, setTipo] = useState("paciente");
+
+  // 📅 consulta
+  const [paciente, setPaciente] = useState("");
+  const [medico, setMedico] = useState("");
+  const [data, setData] = useState("");
+  const [hora, setHora] = useState("");
+  const [motivo, setMotivo] = useState("");
+
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("access")
+      : null;
+
+  // 🔐 proteção
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      router.push("/login");
+    }
+  }, []);
+
+  // 🔄 carregar dados
+  useEffect(() => {
+    fetchUsers();
+    fetchConsultas();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/usuarios/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchConsultas = async () => {
     try {
-      const token = localStorage.getItem("access");
-
       const res = await fetch("http://127.0.0.1:8000/api/minhas-consultas/", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       const data = await res.json();
       setConsultas(data);
     } catch (err) {
-      console.error("Erro ao buscar consultas", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  fetchConsultas();
-}, []);
+  // 👤 criar usuário
+  const criarUsuario = async () => {
+    await fetch("http://127.0.0.1:8000/api/cadastro/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ username, password, tipo }),
+    });
 
-const revenueData = [
-  { month: "Jan", receita: 28500 },
-  { month: "Fev", receita: 32100 },
-  { month: "Mar", receita: 29800 },
-  { month: "Abr", receita: 35200 },
-  { month: "Mai", receita: 38900 },
-  { month: "Jun", receita: 42100 },
-];
+    setShowUserModal(false);
+    setUsername("");
+    setPassword("");
+    setTipo("paciente");
 
-function StatCard({
-  title,
-  value,
-  icon: Icon,
-}: {
-  title: string;
-  value: string;
-  icon: any;
-}) {
-  return (
-    <div className="bg-white shadow rounded-xl p-5 flex items-center justify-between">
-      <div>
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-2xl font-bold">{value}</p>
-      </div>
+    fetchUsers();
+  };
 
-      <div className="bg-blue-100 p-3 rounded-lg">
-        <Icon className="w-5 h-5 text-blue-600" />
-      </div>
-    </div>
-  );
-}
+  // ❌ deletar usuário
+  const deletarUsuario = async (id: number) => {
+    await fetch(`http://127.0.0.1:8000/api/usuarios/${id}/`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-export default function Dashboard() {
+    fetchUsers();
+  };
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const router = useRouter();
+  // 📅 criar consulta
+  const criarConsulta = async () => {
+    await fetch("http://127.0.0.1:8000/api/criar-consulta/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        paciente,
+        medico,
+        data,
+        hora,
+        motivo,
+      }),
+    });
 
-  useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push("/login");
-    }
-  }, [router]);
+    setShowConsultaModal(false);
+    setPaciente("");
+    setMedico("");
+    setData("");
+    setHora("");
+    setMotivo("");
+
+    fetchConsultas();
+  };
 
   const logout = () => {
     authService.logout();
-    router.push("/");
+    localStorage.clear();
+    router.push("/login");
   };
 
   return (
     <div className="flex min-h-screen bg-gray-100">
 
       {/* SIDEBAR */}
+      <aside className="w-64 bg-white p-4 space-y-3">
 
-      <aside
-        className={`bg-white border-r transition-all duration-300 ${
-          sidebarOpen ? "w-64" : "w-20"
-        }`}
-      >
-        <div className="p-5 font-bold text-lg border-b">
-          Ssorrisos
-        </div>
+        <button
+          onClick={() => setShowUserModal(true)}
+          className="bg-green-600 text-white p-2 rounded w-full"
+        >
+          + Usuário
+        </button>
 
-        <nav className="p-3 space-y-2">
+        <button
+          onClick={() => setShowConsultaModal(true)}
+          className="bg-blue-600 text-white p-2 rounded w-full"
+        >
+          + Consulta
+        </button>
 
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="w-full text-left p-2 rounded hover:bg-gray-100"
-          >
-            Dashboard
-          </button>
-
-          <button
-            onClick={() => router.push("/dashboard/pacientes")}
-            className="w-full text-left p-2 rounded hover:bg-gray-100"
-          >
-            Pacientes
-          </button>
-
-          <button
-            onClick={() => router.push("/dashboard/consultas")}
-            className="w-full text-left p-2 rounded hover:bg-gray-100"
-          >
-            Consultas
-          </button>
-
-          <button
-            onClick={() => router.push("/dashboard/medicos")}
-            className="w-full text-left p-2 rounded hover:bg-gray-100"
-          >
-            Médicos
-          </button>
-
-          <button
-            onClick={() => router.push("/dashboard/financeiro")}
-            className="w-full text-left p-2 rounded hover:bg-gray-100"
-          >
-            Financeiro
-          </button>
-
-        </nav>
       </aside>
 
       {/* MAIN */}
-
       <main className="flex-1">
 
-        {/* TOPBAR */}
+        {/* HEADER */}
+        <header className="flex justify-between p-4 border-b bg-white">
+          <Menu />
 
-        <header className="bg-white border-b h-16 flex items-center justify-between px-6">
-
-          <div className="flex items-center gap-3">
-
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            <h1 className="font-bold text-lg">
-              Dashboard
-            </h1>
-
-          </div>
-
-          <div className="flex items-center gap-3">
-
-            <button
-  title="Notificações"
-  aria-label="Notificações"
-  className="p-2 hover:bg-gray-100 rounded"
->
-  <Bell className="w-5 h-5" />
-</button>
-
+          <div className="flex gap-3">
+            <Bell />
             <button
               onClick={logout}
-              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              className="bg-red-500 text-white px-3 py-1 rounded"
             >
               Logout
             </button>
-
           </div>
-
         </header>
-
-        {/* CONTENT */}
 
         <div className="p-6 space-y-6">
 
-          {/* STATS */}
+          {/* USERS */}
+          <div>
+            <h2 className="font-bold mb-2">Usuários</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-
-            <StatCard
-              title="Total Pacientes"
-              value="1248"
-              icon={Users}
-            />
-
-            <StatCard
-              title="Consultas Hoje"
-              value="18"
-              icon={Calendar}
-            />
-
-            <StatCard
-              title="Receita Mensal"
-              value="42.100€"
-              icon={DollarSign}
-            />
-
-            <StatCard
-              title="Taxa Ocupação"
-              value="87%"
-              icon={Activity}
-            />
-
-          </div>
-
-          {/* CHART */}
-
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white shadow rounded-xl p-6"
-          >
-
-            <h2 className="font-bold mb-4">
-              Receita últimos meses
-            </h2>
-
-            <ResponsiveContainer width="100%" height={300}>
-
-              <AreaChart data={revenueData}>
-
-                <CartesianGrid strokeDasharray="3 3" />
-
-                <XAxis dataKey="month" />
-
-                <YAxis />
-
-                <Tooltip />
-
-                <Area
-                  type="monotone"
-                  dataKey="receita"
-                  stroke="#2563eb"
-                  fill="#93c5fd"
-                />
-
-              </AreaChart>
-
-            </ResponsiveContainer>
-
-          </motion.div>
-
-          {/* TABLE */}
-
-          <div className="bg-white shadow rounded-xl p-6">
-
-            <h2 className="font-bold mb-4">
-              Consultas de Hoje
-            </h2>
-
-            <table className="w-full text-sm">
-
-              <thead className="text-left text-gray-500 border-b">
-
+            <table className="w-full bg-white shadow rounded">
+              <thead>
                 <tr>
-                  <th className="py-2">Paciente</th>
-                  <th>Tratamento</th>
-                  <th>Hora</th>
-                  <th>Status</th>
+                  <th>Username</th>
+                  <th>Tipo</th>
+                  <th></th>
                 </tr>
-
               </thead>
 
               <tbody>
-  {loading ? (
-    <tr>
-      <td colSpan={4} className="py-4 text-center">
-        Carregando...
-      </td>
-    </tr>
-  ) : consultas.length === 0 ? (
-    <tr>
-      <td colSpan={4} className="py-4 text-center">
-        Nenhuma consulta encontrada
-      </td>
-    </tr>
-  ) : (
-    consultas.map((c) => (
-      <tr key={c.id} className="border-b">
-        <td className="py-3">{c.paciente}</td>
-        <td>{c.motivo}</td>
-        <td>{c.hora}</td>
-        <td>{c.data}</td>
-      </tr>
-    ))
-  )}
-</tbody>
-
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td>{u.username}</td>
+                    <td>{u.tipo}</td>
+                    <td>
+                      <button onClick={() => deletarUsuario(u.id)}>
+                        ❌
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
+          </div>
 
+          {/* CONSULTAS */}
+          <div>
+            <h2 className="font-bold mb-2">Agenda</h2>
+
+            <table className="w-full bg-white shadow rounded">
+              <thead>
+                <tr>
+                  <th>Paciente</th>
+                  <th>Médico</th>
+                  <th>Data</th>
+                  <th>Hora</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={5}>Carregando...</td></tr>
+                ) : consultas.length === 0 ? (
+                  <tr><td colSpan={5}>Nenhuma consulta</td></tr>
+                ) : (
+                  consultas.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.paciente}</td>
+                      <td>{c.medico}</td>
+                      <td>{c.data}</td>
+                      <td>{c.hora}</td>
+                      <td>{c.motivo}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
 
         </div>
-
       </main>
+
+      {/* MODAL USUÁRIO */}
+      {showUserModal && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
+          <div className="bg-white p-6 space-y-3 rounded w-80">
+
+            <h2 className="font-bold">Criar Usuário</h2>
+
+            <input
+              placeholder="Username"
+              className="border p-2 w-full"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+
+            <input
+              type="password"
+              placeholder="Senha"
+              className="border p-2 w-full"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <select
+              className="border p-2 w-full"
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+            >
+              <option value="paciente">Paciente</option>
+              <option value="medico">Médico</option>
+              <option value="clinica">Clínica</option>
+            </select>
+
+            <button
+              onClick={criarUsuario}
+              className="bg-green-600 text-white w-full p-2 rounded"
+            >
+              Criar
+            </button>
+
+            <button
+              onClick={() => setShowUserModal(false)}
+              className="text-red-500 w-full"
+            >
+              Cancelar
+            </button>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONSULTA */}
+      {showConsultaModal && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
+          <div className="bg-white p-6 space-y-3 rounded w-80">
+
+            <h2 className="font-bold">Criar Consulta</h2>
+
+            <input placeholder="Paciente ID" onChange={e => setPaciente(e.target.value)} className="border p-2 w-full"/>
+            <input placeholder="Médico ID" onChange={e => setMedico(e.target.value)} className="border p-2 w-full"/>
+            <input type="date" onChange={e => setData(e.target.value)} className="border p-2 w-full"/>
+            <input type="time" onChange={e => setHora(e.target.value)} className="border p-2 w-full"/>
+            <input placeholder="Motivo" onChange={e => setMotivo(e.target.value)} className="border p-2 w-full"/>
+
+            <button
+              onClick={criarConsulta}
+              className="bg-blue-600 text-white w-full p-2 rounded"
+            >
+              Criar
+            </button>
+
+            <button
+              onClick={() => setShowConsultaModal(false)}
+              className="text-red-500 w-full"
+            >
+              Cancelar
+            </button>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
