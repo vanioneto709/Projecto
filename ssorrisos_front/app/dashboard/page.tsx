@@ -6,6 +6,7 @@ import { Menu, Bell } from "lucide-react";
 import { authService } from "@/services/auth";
 
 export default function Dashboard() {
+  console.log("TOKEN:", localStorage.getItem("access"));
 
   const router = useRouter();
 
@@ -28,19 +29,22 @@ export default function Dashboard() {
   const [hora, setHora] = useState("");
   const [motivo, setMotivo] = useState("");
 
+ useEffect(() => {
   const token =
     typeof window !== "undefined"
       ? localStorage.getItem("access")
       : null;
+      }, []);
 
   // 🔐 proteção
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
+    const token = localStorage.getItem("access");
+    if (!token) {
       router.push("/login");
     }
   }, []);
 
-  // 🔄 carregar dados
+  // 🔄 carregar dadosA
   useEffect(() => {
     fetchUsers();
     fetchConsultas();
