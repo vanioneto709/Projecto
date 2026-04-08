@@ -36,13 +36,13 @@ export default function LoginPage() {
 
       if (!res.ok) {
         setError("Usuário ou senha inválidos");
-        setIsLoading(false);
         return;
       }
 
       // Guardar tokens
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
+      document.cookie = `token=${data.access}; path=/; max-age=86400; SameSite=Lax`;
 
       // Descobrir tipo de utilizador
       const userRes = await fetch("http://127.0.0.1:8000/api/me/", {
@@ -59,7 +59,7 @@ export default function LoginPage() {
 
       const userData = await userRes.json();
       console.log("UserData:", userData);  // Verifica no console o que retorna!
-
+         setIsLoading(false);
       // 🔥 REDIRECIONAMENTO INTELIGENTE (VOLTEI A LÓGICA!)
       if (userData.tipo === "admin" || userData.tipo === "clinica") {
         router.push("/dashboard");
