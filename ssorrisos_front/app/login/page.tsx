@@ -60,14 +60,16 @@ export default function LoginPage() {
       const userData = await userRes.json();
       console.log("UserData:", userData);  // Verifica no console o que retorna!
          setIsLoading(false);
-      // 🔥 REDIRECIONAMENTO INTELIGENTE (VOLTEI A LÓGICA!)
-      if (userData.tipo === "admin" || userData.tipo === "clinica") {
-        router.push("/dashboard");
-      } else if (userData.tipo === "medico") {
-        router.push("/dashboard-medico");
-      } else {
-        router.push("/dashboard-paciente");
-      }
+    // 🔥 REDIRECIONAMENTO CORRETO
+if (userData.tipo === "admin") {
+  router.push("/dashboard-admin");        // Admin do SISTEMA
+} else if (userData.tipo === "admin_clinica") {
+  router.push("/dashboard-clinica");      // Admin da CLÍNICA
+} else if (userData.tipo === "medico") {
+  router.push("/dashboard-medico");
+} else {
+  router.push("/dashboard-paciente");
+}
 
     } catch (err) {
       console.error("Erro no login:", err);
