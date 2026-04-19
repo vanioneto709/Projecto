@@ -1,0 +1,371 @@
+/* ============================================================
+   LOGIN — Dark moderno (estilo Linear / Vercel)
+   ============================================================ */
+
+.page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  background: #07080a;
+  color: #e6e8ec;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+}
+
+/* ─── HERO (esquerda) ─── */
+.hero {
+  position: relative;
+  padding: 48px 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background:
+    radial-gradient(1200px 600px at 0% 0%, rgba(88, 166, 255, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 100% 100%, rgba(63, 185, 80, 0.12), transparent 60%),
+    linear-gradient(180deg, #0a0d12 0%, #07080a 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  pointer-events: none;
+}
+
+.heroLogo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.heroLogoIcon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #58a6ff 0%, #3fb950 100%);
+  color: #000;
+  box-shadow: 0 8px 24px -8px rgba(88, 166, 255, 0.6);
+}
+
+.heroContent {
+  position: relative;
+  max-width: 520px;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.08);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+  border-radius: 999px;
+  margin-bottom: 24px;
+}
+
+.heroTitle {
+  font-size: clamp(32px, 4vw, 46px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0 0 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #a8b0bd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.heroSubtitle {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: #8b95a5;
+  margin: 0 0 40px;
+}
+
+.heroFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.heroFeature {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.heroFeatureIcon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #58a6ff;
+  flex-shrink: 0;
+}
+
+.heroFeatureText p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e6e8ec;
+}
+
+.heroFeatureText span {
+  font-size: 13px;
+  color: #6b7484;
+}
+
+.heroFooter {
+  position: relative;
+  font-size: 12px;
+  color: #5a6373;
+  margin: 0;
+}
+
+/* ─── FORM (direita) ─── */
+.formSide {
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  background: #07080a;
+  position: relative;
+}
+
+.formSide::before {
+  content: "";
+  position: absolute;
+  top: 20%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(88, 166, 255, 0.06), transparent 70%);
+  pointer-events: none;
+}
+
+.formCard {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+  background: rgba(20, 23, 28, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  box-shadow:
+    0 20px 60px -20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.formHeader {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.formIcon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(88, 166, 255, 0.15), rgba(63, 185, 80, 0.1));
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  color: #58a6ff;
+}
+
+.formTitle {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+  color: #fff;
+}
+
+.formSubtitle {
+  font-size: 14px;
+  color: #8b95a5;
+  margin: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #b4bcc9;
+  letter-spacing: -0.005em;
+}
+
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  color: #6b7484;
+  pointer-events: none;
+  transition: color 0.2s;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px 12px 44px;
+  font-size: 14px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.input::placeholder {
+  color: #5a6373;
+}
+
+.input:focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(88, 166, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.12);
+}
+
+.input:focus ~ .inputIcon,
+.inputWrap:focus-within .inputIcon {
+  color: #58a6ff;
+}
+
+.togglePassword {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #6b7484;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s;
+}
+
+.togglePassword:hover {
+  color: #e6e8ec;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.errorMsg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  font-size: 13px;
+  color: #ff7b72;
+  background: rgba(248, 81, 73, 0.08);
+  border: 1px solid rgba(248, 81, 73, 0.25);
+  border-radius: 10px;
+}
+
+.submitBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #58a6ff 0%, #3b82f6 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow:
+    0 8px 24px -8px rgba(88, 166, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 32px -8px rgba(88, 166, 255, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.submitBtn:active:not(:disabled) { transform: translateY(0); }
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.formFooter {
+  margin: 28px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: #8b95a5;
+}
+
+.formFooter a {
+  margin-left: 6px;
+  color: #58a6ff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.formFooter a:hover { color: #79c0ff; }
+
+/* ─── Responsivo ─── */
+@media (max-width: 960px) {
+  .page { grid-template-columns: 1fr; }
+  .hero { display: none; }
+  .formSide { padding: 24px; }
+  .formCard { padding: 32px 24px; }
+}

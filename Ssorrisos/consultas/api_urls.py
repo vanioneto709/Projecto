@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .api_views import (
     # Auth & Users
-    cadastro_api, me_api, listar_usuarios_api, deletar_usuario_api,
+    cadastro_api, me_api, listar_usuarios_api, deletar_usuario_api,usuario_detalhe_api,
     
     # Clínicas (Admin Sistema)
     clinicas_api, clinica_detalhe_api,
@@ -38,9 +38,9 @@ urlpatterns = [
     
     # Users
     path('usuarios/', listar_usuarios_api, name='listar_usuarios'),
-    path('usuarios/<int:user_id>/', deletar_usuario_api, name='deletar_usuario'),
-    
-    # Clínicas (só admin sistema) - ✅ Compatível com novo modelo Clinica
+   path('usuarios/<int:user_id>/', deletar_usuario_api, name='deletar_usuario'),
+path('usuarios/<int:user_id>/editar/', usuario_detalhe_api, name='usuario_detalhe'),
+# Clínicas (só admin sistema) - ✅ Compatível com novo modelo Clinica
     path('clinicas/', clinicas_api, name='clinicas'),
     path('clinicas/<int:clinica_id>/', clinica_detalhe_api, name='clinica_detalhe'),
     

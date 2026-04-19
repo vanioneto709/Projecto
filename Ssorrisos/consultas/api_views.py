@@ -80,7 +80,9 @@ def cadastro_api(request):
     email = request.data.get("email")
     password = request.data.get("password")
     tipo = request.data.get("tipo", "paciente")
-    clinica_id = request.data.get("clinica_id")  # ID da Clinica (não mais User!)
+    clinica_id = request.data.get("clinica_id") or request.data.get("clinicaId")
+    telefone = request.data.get("telefone", "")
+    especialidade = request.data.get("especialidade","")
 
     # Validações
     if not username or not password:
@@ -119,7 +121,15 @@ def cadastro_api(request):
         except Clinica.DoesNotExist:
             pass  # Clinica não existe, cria sem vínculo
     
-    Perfil.objects.create(**perfil_data)
+    perfil, created = Perfil.objects.get_or_create(user=user, defaults=perfil_data)
+    if not created:
+        # Signal criou antes — atualiza com os dados corretos
+        perfil.tipo = tipo
+        perfil.telefone = telefone
+        perfil.especialidade = especialidade
+        if 'clinica_vinculada' in perfil_data:
+            perfil.clinica_vinculada = perfil_data['clinica_vinculada']
+        perfil.save()
 
     return Response({
         "message": "Usuário criado com sucesso",
@@ -197,7 +207,70 @@ def listar_usuarios_api(request):
 
     return Response(data)
 
+@api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def usuario_detalhe_api(request, user_id):
+    """Visualizar ou editar um usuário (admin do sistema ou admin da clínica)."""
+    if not is_admin_sistema(request.user) and not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
 
+    try:
+        user_alvo = User.objects.get(id=user_id)
+        perfil = Perfil.objects.get(user=user_alvo)
+    except User.DoesNotExist:
+        return Response({"error": "Usuário não encontrado"}, status=404)
+    except Perfil.DoesNotExist:
+        return Response({"error": "Perfil não encontrado"}, status=404)
+
+    # Admin de clínica só pode editar usuários da sua clínica
+    if is_admin_clinica(request.user):
+        minha_clinica = get_minha_clinica(request.user)
+        if perfil.clinica_vinculada != minha_clinica:
+            return Response({"error": "Acesso negado"}, status=403)
+
+    if request.method == 'GET':
+        return Response({
+            "id": user_alvo.id,
+            "username": user_alvo.username,
+            "email": user_alvo.email,
+            "tipo": perfil.tipo,
+            "telefone": perfil.telefone or "",
+            "especialidade": perfil.especialidade or "",
+            "clinicaId": perfil.clinica_vinculada.id if perfil.clinica_vinculada else None,
+            "status": "ativo" if perfil.ativo else "inativo",
+        })
+
+    elif request.method in ('PUT', 'PATCH'):
+        dados = request.data
+
+        if 'email' in dados:
+            user_alvo.email = dados['email']
+        if 'first_name' in dados:
+            user_alvo.first_name = dados['first_name']
+        if 'last_name' in dados:
+            user_alvo.last_name = dados['last_name']
+        user_alvo.save()
+
+        if 'tipo' in dados and is_admin_sistema(request.user):
+            tipos_validos = ['paciente', 'medico', 'admin_clinica', 'recepcionista']
+            if dados['tipo'] in tipos_validos:
+                perfil.tipo = dados['tipo']
+        if 'telefone' in dados:
+            perfil.telefone = dados['telefone']
+        if 'especialidade' in dados:
+            perfil.especialidade = dados['especialidade']
+        if 'clinicaId' in dados or 'clinica_id' in dados:
+            clinica_id = dados.get('clinicaId') or dados.get('clinica_id')
+            try:
+                perfil.clinica_vinculada = Clinica.objects.get(id=clinica_id)
+            except Clinica.DoesNotExist:
+                pass
+        if 'status' in dados:
+            perfil.ativo = dados['status'] == 'ativo'
+        perfil.save()
+
+        return Response({"message": "Usuário atualizado com sucesso"})
+        
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def deletar_usuario_api(request, user_id):

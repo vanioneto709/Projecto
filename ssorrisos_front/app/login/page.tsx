@@ -1,10 +1,23 @@
+// ============================================================
+// LOGIN PAGE — JSX redesenhado (dark moderno estilo Linear/Vercel)
+//
+// ✔ LÓGICA 100% PRESERVADA:
+//   - Mesmas chamadas para /api/login/ e /api/me/
+//   - Mesmo fluxo de tokens (localStorage + cookie)
+//   - Mesma lógica de redirect por tipo de usuário
+//   - Apenas a estrutura visual mudou
+// ============================================================
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, LogIn, Sparkles } from "lucide-react";
+import {
+  Eye, EyeOff, LogIn, Sparkles, User, Lock,
+  AlertCircle, Building2, ShieldCheck, Stethoscope, BarChart3
+} from "lucide-react";
+import styles from "./login.module.css";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +28,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // ─── LÓGICA INTOCADA ────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -23,13 +37,8 @@ export default function LoginPage() {
     try {
       const res = await fetch("http://127.0.0.1:8000/api/login/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          username,
-          password
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await res.json();
@@ -39,16 +48,12 @@ export default function LoginPage() {
         return;
       }
 
-      // Guardar tokens
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
       document.cookie = `token=${data.access}; path=/; max-age=86400; SameSite=Lax`;
 
-      // Descobrir tipo de utilizador
       const userRes = await fetch("http://127.0.0.1:8000/api/me/", {
-        headers: {
-          Authorization: `Bearer ${data.access}`
-        }
+        headers: { Authorization: `Bearer ${data.access}` },
       });
 
       if (!userRes.ok) {
@@ -58,19 +63,18 @@ export default function LoginPage() {
       }
 
       const userData = await userRes.json();
-      console.log("UserData:", userData);  // Verifica no console o que retorna!
-         setIsLoading(false);
-    // 🔥 REDIRECIONAMENTO CORRETO
-if (userData.tipo === "admin") {
-  router.push("/dashboard-admin");        // Admin do SISTEMA
-} else if (userData.tipo === "admin_clinica") {
-  router.push("/dashboard-clinica");      // Admin da CLÍNICA
-} else if (userData.tipo === "medico") {
-  router.push("/dashboard-medico");
-} else {
-  router.push("/dashboard-paciente");
-}
+      console.log("UserData:", userData);
+      setIsLoading(false);
 
+      if (userData.tipo === "admin") {
+        router.push("/dashboard-admin");
+      } else if (userData.tipo === "admin_clinica") {
+        router.push("/dashboard-clinica");
+      } else if (userData.tipo === "medico") {
+        router.push("/dashboard-medico");
+      } else {
+        router.push("/dashboard-paciente");
+      }
     } catch (err) {
       console.error("Erro no login:", err);
       setError("Erro no servidor");
@@ -78,73 +82,154 @@ if (userData.tipo === "admin") {
 
     setIsLoading(false);
   };
+  // ─── FIM LÓGICA ─────────────────────────────────────────────
 
   return (
-    // ... resto do JSX continua igual ...
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden relative">
-      <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6 }}
-        className="w-full max-w-md relative z-10 rounded-2xl p-8 md:p-10 backdrop-blur-xl border border-border/50"
-        style={{ background: "hsl(220 35% 18% / 0.8)" }}
-      >
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <Sparkles className="w-6 h-6 text-gold" />
-            <span className="text-sm font-medium text-muted-foreground tracking-widest uppercase">
-              Bem-vindo de volta
-            </span>
+    <div className={styles.page}>
+      {/* ═══ LADO ESQUERDO — HERO ═══ */}
+      <aside className={styles.hero}>
+        <div className={styles.heroLogo}>
+          <div className={styles.heroLogoIcon}>
+            <Building2 size={22} />
           </div>
-          <h1 className="text-3xl font-bold text-white">Login</h1>
+          AdminClinic
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <input
-            type="text"
-            placeholder="Utilizador"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-border/50 bg-gray-800 text-white"
-          />
+        <div className={styles.heroContent}>
+          <span className={styles.heroBadge}>
+            <Sparkles size={14} /> Plataforma de Gestão Clínica
+          </span>
+          <h1 className={styles.heroTitle}>
+            Gestão completa para sua rede de clínicas.
+          </h1>
+          <p className={styles.heroSubtitle}>
+            Centralize médicos, pacientes, agendas e financeiro em um único
+            painel. Tudo seguro, em tempo real.
+          </p>
 
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-border/50 bg-gray-800 text-white"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-            >
-              {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
-            </button>
+          <div className={styles.heroFeatures}>
+            <div className={styles.heroFeature}>
+              <div className={styles.heroFeatureIcon}><ShieldCheck size={18} /></div>
+              <div className={styles.heroFeatureText}>
+                <p>Acesso seguro</p>
+                <span>JWT + permissões por tipo de usuário</span>
+              </div>
+            </div>
+            <div className={styles.heroFeature}>
+              <div className={styles.heroFeatureIcon}><Stethoscope size={18} /></div>
+              <div className={styles.heroFeatureText}>
+                <p>Multi-clínica</p>
+                <span>Gerencie várias unidades em um só lugar</span>
+              </div>
+            </div>
+            <div className={styles.heroFeature}>
+              <div className={styles.heroFeatureIcon}><BarChart3 size={18} /></div>
+              <div className={styles.heroFeatureText}>
+                <p>Relatórios em tempo real</p>
+                <span>KPIs financeiros e operacionais</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className={styles.heroFooter}>
+          © {new Date().getFullYear()} AdminClinic — Todos os direitos reservados
+        </p>
+      </aside>
+
+      {/* ═══ LADO DIREITO — FORM ═══ */}
+      <main className={styles.formSide}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className={styles.formCard}
+        >
+          <div className={styles.formHeader}>
+            <div className={styles.formIcon}>
+              <LogIn size={26} />
+            </div>
+            <h2 className={styles.formTitle}>Bem-vindo de volta</h2>
+            <p className={styles.formSubtitle}>
+              Entre com suas credenciais para acessar o painel
+            </p>
           </div>
 
-          {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
-          )}
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.field}>
+              <label className={styles.fieldLabel} htmlFor="username">Utilizador</label>
+              <div className={styles.inputWrap}>
+                <User className={styles.inputIcon} size={18} />
+                <input
+                  id="username"
+                  type="text"
+                  placeholder="seu.usuario"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className={styles.input}
+                  autoComplete="username"
+                  required
+                />
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-3 rounded-xl bg-yellow-500 text-black font-semibold"
-          >
-            {isLoading ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
+            <div className={styles.field}>
+              <label className={styles.fieldLabel} htmlFor="password">Senha</label>
+              <div className={styles.inputWrap}>
+                <Lock className={styles.inputIcon} size={18} />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={styles.input}
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className={styles.togglePassword}
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
 
-        <p className="text-center mt-6 text-sm text-gray-400">
-          Não tem conta?{" "}
-          <Link href="/cadastro" className="text-yellow-400">
-            Criar conta
-          </Link>
-        </p>
-      </motion.div>
+            {error && (
+              <div className={styles.errorMsg}>
+                <AlertCircle size={16} />
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={styles.submitBtn}
+            >
+              {isLoading ? (
+                <>
+                  <span className={styles.spinner} />
+                  Entrando...
+                </>
+              ) : (
+                <>
+                  <LogIn size={18} />
+                  Entrar
+                </>
+              )}
+            </button>
+          </form>
+
+          <p className={styles.formFooter}>
+            Não tem conta?
+            <Link href="/cadastro">Criar conta</Link>
+          </p>
+        </motion.div>
+      </main>
     </div>
   );
 }
