@@ -98,12 +98,21 @@ export default function DashboardPaciente() {
     } catch { }
   };
 
-  const fetchHorarios = async (medicoId:number, data:string) => {
-    try {
-      const r = await fetch(`${API}/api/medico/horarios/?medico_id=${medicoId}&data=${data}`);
-      if(r.ok){ const d=await r.json(); setHorariosOcupados(d.ocupados||[]); }
-    } catch { }
-  };
+const fetchHorarios = async (medicoId: number, data: string) => {
+  try {
+    const r = await fetch(`${API}/api/publico/horarios/?medico_id=${medicoId}&data=${data}`);
+    if (r.ok) {
+      const d = await r.json();
+      const todosHorarios = [
+        "08:00","08:30","09:00","09:30","10:00","10:30",
+        "11:00","11:30","14:00","14:30","15:00","15:30",
+        "16:00","16:30","17:00","17:30",
+      ];
+      const disponiveis: string[] = d.horariosDisponiveis || [];
+      setHorariosOcupados(todosHorarios.filter(h => !disponiveis.includes(h)));
+    }
+  } catch { }
+};
 
   const cancelarConsulta = async (id:number) => {
     if(!token || !confirm("Cancelar esta consulta?")) return;
@@ -135,8 +144,13 @@ export default function DashboardPaciente() {
     setAgStep("medico"); setMedicoSel(null); setDataSel(""); setHoraSel(""); setMotivoAg(""); setAgendado(false);
   };
 
-  const logout = () => { localStorage.clear(); window.location.href="/login"; };
-
+const logout = () => {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+  // Apagar o cookie que o middleware lê
+  document.cookie = "token=; path=/; max-age=0; SameSite=Lax";
+  window.location.replace("/login");
+};
   const formatData = (d:string) => { try { return new Date(d).toLocaleDateString("pt-BR"); } catch { return d; } };
 
   const consultasFuturas = consultas.filter(c=>c.status!=="cancelada"&&c.status!=="concluida");

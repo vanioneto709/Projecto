@@ -50,7 +50,7 @@ export default function LoginPage() {
 
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
-      document.cookie = `token=${data.access}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `token=${data.access}; path=/; max-age=3600; SameSite=Lax`;
 
       const userRes = await fetch("http://127.0.0.1:8000/api/me/", {
         headers: { Authorization: `Bearer ${data.access}` },
@@ -67,7 +67,7 @@ export default function LoginPage() {
       setIsLoading(false);
 
       if (userData.tipo === "admin") {
-        router.push("/dashboard-admin");
+        router.push("/dashboard");
       } else if (userData.tipo === "admin_clinica") {
         router.push("/dashboard-clinica");
       } else if (userData.tipo === "medico") {

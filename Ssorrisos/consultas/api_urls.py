@@ -27,6 +27,14 @@ from .api_views import (
     
     # Dashboard Clínica
     consultas_clinica_api,
+clinica_stats_api,
+    clinica_medicos_api,
+    clinica_medico_detalhe_api,
+    clinica_pacientes_api,
+    clinica_consultas_gestao_api,
+    clinica_consulta_detalhe_api,
+    clinica_medicos_lista_api,
+    clinica_pacientes_lista_api,
 )
 
 urlpatterns = [
@@ -75,4 +83,13 @@ path('usuarios/<int:user_id>/editar/', usuario_detalhe_api, name='usuario_detalh
     
     # Dashboard Clínica (admin_clinica)
     path('clinica/consultas/', consultas_clinica_api, name='consultas_clinica'),
+# ── Dashboard Clínica (admin_clinica) ──
+path('minha-clinica/stats/', clinica_stats_api, name='clinica_stats'),
+path('minha-clinica/medicos/', clinica_medicos_api, name='clinica_medicos'),
+path('minha-clinica/medicos/<int:medico_id>/', clinica_medico_detalhe_api, name='clinica_medico_detalhe'),
+path('minha-clinica/pacientes/', clinica_pacientes_api, name='clinica_pacientes'),
+path('minha-clinica/consultas/', clinica_consultas_gestao_api, name='clinica_consultas_gestao'),
+path('minha-clinica/consultas/<int:consulta_id>/', clinica_consulta_detalhe_api, name='clinica_consulta_detalhe'),
+path('minha-clinica/medicos-lista/', clinica_medicos_lista_api, name='clinica_medicos_lista'),
+path('minha-clinica/pacientes-lista/', clinica_pacientes_lista_api, name='clinica_pacientes_lista'),
 ]

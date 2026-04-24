@@ -270,7 +270,7 @@ def usuario_detalhe_api(request, user_id):
         perfil.save()
 
         return Response({"message": "Usuário atualizado com sucesso"})
-        
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def deletar_usuario_api(request, user_id):
@@ -328,7 +328,7 @@ def clinicas_api(request):
                 "email": c.email or "",
                 "telefone": c.telefone or "",
                 "endereco": c.endereco or "",
-                "cnpj": c.cnpj or "",
+                "NIF": c.NIF or "",
                 "status": c.status,  # "ativa", "inativa", "suspensa"
                 "dataCadastro": c.dataCadastro,
                 "totalMedicos": c.totalMedicos,
@@ -347,7 +347,7 @@ def clinicas_api(request):
         email = dados.get('email', '').strip()
         telefone = dados.get('telefone', '').strip()
         endereco = dados.get('endereco', '').strip()
-        cnpj = dados.get('cnpj', '').strip()
+        NIF = dados.get('NIF', '').strip()
 
         if not nome or not email:
             return Response({"error": "Nome e email são obrigatórios"}, status=400)
@@ -360,7 +360,7 @@ def clinicas_api(request):
             email=email,
             telefone=telefone,
             endereco=endereco,
-            cnpj=cnpj,
+            NIF=NIF,
             status='ativa'
         )
 
@@ -368,6 +368,7 @@ def clinicas_api(request):
             "id": clinica.id,
             "nome": nome,
             "email": email,
+            "NIF": NIF,
             "message": "Clínica criada com sucesso"
         }, status=201)
 
@@ -393,7 +394,7 @@ def clinica_detalhe_api(request, clinica_id):
             "email": clinica.email or "",
             "telefone": clinica.telefone or "",
             "endereco": clinica.endereco or "",
-            "cnpj": clinica.cnpj or "",
+            "NIF": clinica.NIF or "",
             "status": clinica.status,
             "dataCadastro": clinica.dataCadastro,
             "totalMedicos": clinica.totalMedicos,
@@ -411,8 +412,8 @@ def clinica_detalhe_api(request, clinica_id):
             clinica.telefone = dados['telefone']
         if 'endereco' in dados:
             clinica.endereco = dados['endereco']
-        if 'cnpj' in dados:
-            clinica.cnpj = dados['cnpj']
+        if 'NIF' in dados:
+            clinica.NIF = dados['NIF']
         if 'status' in dados:
             clinica.status = dados['status']
         
@@ -712,22 +713,26 @@ def notificacoes_api(request):
 # ============================================
 
 @api_view(['GET'])
+def _consultas_do_paciente(user):
+    """Lógica pura — sem request, sem DRF, pode ser chamada de qualquer lugar."""
+    consultas = Consulta.objects.filter(
+        paciente=user
+    ).select_related('medico').order_by('-data', '-hora')
+    return [_serializar_consulta(c) for c in consultas]
+
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def minhas_consultas_api(request):
     """Consultas do paciente logado."""
-    consultas = Consulta.objects.filter(
-        paciente=request.user
-    ).select_related('medico').order_by('-data', '-hora')
-    
-    return Response([_serializar_consulta(c) for c in consultas])
+    return Response(_consultas_do_paciente(request.user))
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def consultas_paciente_api(request):
-    """Alias para minhas_consultas_api."""
-    return minhas_consultas_api(request)
-
+    """Alias — /api/paciente/consultas/ → mesma lógica, sem chamar @api_view dentro de @api_view."""
+    return Response(_consultas_do_paciente(request.user))
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -1104,7 +1109,7 @@ def cadastro_clinica_api(request):
     dados = request.data
     
     nome = dados.get('nome')
-    cnpj = dados.get('cnpj', '')
+    NIF = dados.get('NIF', '')
     email = dados.get('email')
     telefone = dados.get('telefone')
     endereco = dados.get('endereco', '')
@@ -1123,7 +1128,7 @@ def cadastro_clinica_api(request):
             email=email,
             telefone=telefone,
             endereco=endereco,
-            cnpj=cnpj,
+            NIF=NIF,
             status='ativa'
         )
         
@@ -1240,3 +1245,360 @@ def consultas_clinica_api(request):
         })
     
     return Response(data)
+    # ============================================
+# DASHBOARD CLÍNICA — GESTÃO COMPLETA
+# ============================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def clinica_stats_api(request):
+    """Estatísticas da clínica para o admin_clinica."""
+    if not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
+
+    minha_clinica = get_minha_clinica(request.user)
+    if not minha_clinica:
+        return Response({"error": "Clínica não encontrada"}, status=404)
+
+    hoje = date.today()
+    inicio_mes = hoje.replace(day=1)
+
+    medicos_ids = Perfil.objects.filter(
+        tipo='medico', clinica_vinculada=minha_clinica
+    ).values_list('user_id', flat=True)
+
+    total_medicos = len(medicos_ids)
+    total_pacientes = Consulta.objects.filter(
+        medico_id__in=medicos_ids
+    ).values('paciente_id').distinct().count()
+
+    consultas_hoje = Consulta.objects.filter(medico_id__in=medicos_ids, data=hoje).count()
+    consultas_mes = Consulta.objects.filter(medico_id__in=medicos_ids, data__gte=inicio_mes).count()
+    consultas_pendentes = Consulta.objects.filter(medico_id__in=medicos_ids, status='agendada').count()
+
+    faturamento = Consulta.objects.filter(
+        medico_id__in=medicos_ids,
+        data__gte=inicio_mes,
+        status='concluida',
+        valor__isnull=False
+    ).aggregate(total=Sum('valor'))['total'] or 0
+
+    return Response({
+        "clinica": {
+            "id": minha_clinica.id,
+            "nome": minha_clinica.nome,
+            "status": minha_clinica.status,
+        },
+        "totalMedicos": total_medicos,
+        "totalPacientes": total_pacientes,
+        "consultasHoje": consultas_hoje,
+        "consultasMes": consultas_mes,
+        "consultasPendentes": consultas_pendentes,
+        "faturamentoMes": float(faturamento),
+        "ticketMedio": float(faturamento / consultas_mes) if consultas_mes > 0 else 0,
+    })
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def clinica_medicos_api(request):
+    """
+    GET  → lista médicos da clínica
+    POST → cria novo médico vinculado à clínica
+    """
+    if not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
+
+    minha_clinica = get_minha_clinica(request.user)
+    if not minha_clinica:
+        return Response({"error": "Clínica não encontrada"}, status=404)
+
+    if request.method == 'GET':
+        perfis = Perfil.objects.filter(
+            tipo='medico', clinica_vinculada=minha_clinica
+        ).select_related('user')
+
+        data = []
+        for p in perfis:
+            total_consultas = Consulta.objects.filter(medico=p.user).count()
+            consultas_mes = Consulta.objects.filter(
+                medico=p.user, data__gte=date.today().replace(day=1)
+            ).count()
+            data.append({
+                "id": p.user.id,
+                "username": p.user.username,
+                "nome": p.user.get_full_name() or p.user.username,
+                "email": p.user.email or "",
+                "telefone": p.telefone or "",
+                "especialidade": p.especialidade or "",
+                "crm": p.crm or "",
+                "status": "ativo" if p.ativo else "inativo",
+                "totalConsultas": total_consultas,
+                "consultasMes": consultas_mes,
+                "ultimoAcesso": p.ultimo_acesso.strftime("%Y-%m-%d %H:%M") if p.ultimo_acesso else "—",
+            })
+        return Response(data)
+
+    elif request.method == 'POST':
+        dados = request.data
+        username = dados.get('username', '').strip()
+        email = dados.get('email', '').strip()
+        password = dados.get('password', '').strip()
+        especialidade = dados.get('especialidade', '').strip()
+        crm = dados.get('crm', '').strip()
+        telefone = dados.get('telefone', '').strip()
+
+        if not username or not password:
+            return Response({"error": "Username e senha são obrigatórios"}, status=400)
+        if User.objects.filter(username=username).exists():
+            return Response({"error": "Username já existe"}, status=400)
+
+        user = User.objects.create_user(
+            username=username, email=email, password=password
+        )
+        perfil, created = Perfil.objects.get_or_create(user=user, defaults={
+            'tipo': 'medico',
+            'clinica_vinculada': minha_clinica,
+            'especialidade': especialidade,
+            'crm': crm,
+            'telefone': telefone,
+        })
+        if not created:
+            perfil.tipo = 'medico'
+            perfil.clinica_vinculada = minha_clinica
+            perfil.especialidade = especialidade
+            perfil.crm = crm
+            perfil.telefone = telefone
+            perfil.save()
+
+        return Response({
+            "message": "Médico criado com sucesso",
+            "id": user.id,
+            "username": username,
+        }, status=201)
+
+
+@api_view(['GET', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def clinica_medico_detalhe_api(request, medico_id):
+    """Editar ou remover médico da clínica."""
+    if not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
+
+    minha_clinica = get_minha_clinica(request.user)
+
+    try:
+        perfil = Perfil.objects.get(user_id=medico_id, tipo='medico', clinica_vinculada=minha_clinica)
+        user_alvo = perfil.user
+    except Perfil.DoesNotExist:
+        return Response({"error": "Médico não encontrado nesta clínica"}, status=404)
+
+    if request.method == 'GET':
+        return Response({
+            "id": user_alvo.id,
+            "username": user_alvo.username,
+            "email": user_alvo.email or "",
+            "telefone": perfil.telefone or "",
+            "especialidade": perfil.especialidade or "",
+            "crm": perfil.crm or "",
+            "status": "ativo" if perfil.ativo else "inativo",
+        })
+
+    elif request.method == 'PATCH':
+        dados = request.data
+        if 'email' in dados:
+            user_alvo.email = dados['email']
+        if 'first_name' in dados:
+            user_alvo.first_name = dados['first_name']
+        if 'last_name' in dados:
+            user_alvo.last_name = dados['last_name']
+        user_alvo.save()
+
+        if 'especialidade' in dados:
+            perfil.especialidade = dados['especialidade']
+        if 'crm' in dados:
+            perfil.crm = dados['crm']
+        if 'telefone' in dados:
+            perfil.telefone = dados['telefone']
+        if 'status' in dados:
+            perfil.ativo = dados['status'] == 'ativo'
+        perfil.save()
+        return Response({"message": "Médico atualizado"})
+
+    elif request.method == 'DELETE':
+        # Desvincula da clínica em vez de deletar
+        perfil.clinica_vinculada = None
+        perfil.ativo = False
+        perfil.save()
+        return Response({"message": "Médico removido da clínica"})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def clinica_pacientes_api(request):
+    """Lista pacientes que já tiveram consulta na clínica."""
+    if not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
+
+    minha_clinica = get_minha_clinica(request.user)
+    if not minha_clinica:
+        return Response({"error": "Clínica não encontrada"}, status=404)
+
+    medicos_ids = Perfil.objects.filter(
+        tipo='medico', clinica_vinculada=minha_clinica
+    ).values_list('user_id', flat=True)
+
+    pacientes_ids = Consulta.objects.filter(
+        medico_id__in=medicos_ids
+    ).values_list('paciente_id', flat=True).distinct()
+
+    data = []
+    for uid in pacientes_ids:
+        try:
+            u = User.objects.get(id=uid)
+            perfil_pac = Perfil.objects.filter(user=u).first()
+            ultima = Consulta.objects.filter(
+                paciente=u, medico_id__in=medicos_ids
+            ).order_by('-data').first()
+            total = Consulta.objects.filter(paciente=u, medico_id__in=medicos_ids).count()
+
+            data.append({
+                "id": u.id,
+                "username": u.username,
+                "nome": u.get_full_name() or u.username,
+                "email": u.email or "",
+                "telefone": perfil_pac.telefone if perfil_pac else "",
+                "ultimaConsulta": ultima.data.strftime("%Y-%m-%d") if ultima else None,
+                "totalConsultas": total,
+            })
+        except User.DoesNotExist:
+            continue
+
+    return Response(data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def clinica_consultas_gestao_api(request):
+    """
+    GET  → lista todas as consultas da clínica
+    POST → cria nova consulta
+    """
+    if not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
+
+    minha_clinica = get_minha_clinica(request.user)
+    if not minha_clinica:
+        return Response({"error": "Clínica não encontrada"}, status=404)
+
+    medicos_ids = Perfil.objects.filter(
+        tipo='medico', clinica_vinculada=minha_clinica
+    ).values_list('user_id', flat=True)
+
+    if request.method == 'GET':
+        qs = Consulta.objects.filter(
+            medico_id__in=medicos_ids
+        ).select_related('paciente', 'medico').order_by('-data', '-hora')
+        return Response([_serializar_consulta(c) for c in qs])
+
+    elif request.method == 'POST':
+        dados = request.data
+        medico_id = dados.get('medico')
+        paciente_id = dados.get('paciente')
+        data_c = dados.get('data')
+        hora_c = dados.get('hora')
+        motivo = dados.get('motivo', '')
+        valor = dados.get('valor')
+
+        if not all([medico_id, paciente_id, data_c, hora_c]):
+            return Response({"error": "medico, paciente, data e hora são obrigatórios"}, status=400)
+
+        if int(medico_id) not in list(medicos_ids):
+            return Response({"error": "Médico não pertence à sua clínica"}, status=403)
+
+        if Consulta.objects.filter(medico_id=medico_id, data=data_c, hora=hora_c).exists():
+            return Response({"error": "Horário já ocupado"}, status=409)
+
+        consulta = Consulta.objects.create(
+            paciente_id=paciente_id,
+            medico_id=medico_id,
+            data=data_c,
+            hora=hora_c,
+            motivo=motivo,
+            valor=valor,
+            status='agendada'
+        )
+        return Response({"message": "Consulta criada", "id": consulta.id}, status=201)
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def clinica_consulta_detalhe_api(request, consulta_id):
+    """Atualizar status ou cancelar consulta da clínica."""
+    if not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
+
+    minha_clinica = get_minha_clinica(request.user)
+    medicos_ids = Perfil.objects.filter(
+        tipo='medico', clinica_vinculada=minha_clinica
+    ).values_list('user_id', flat=True)
+
+    try:
+        consulta = Consulta.objects.get(id=consulta_id, medico_id__in=medicos_ids)
+    except Consulta.DoesNotExist:
+        return Response({"error": "Consulta não encontrada"}, status=404)
+
+    if request.method == 'PATCH':
+        novo_status = request.data.get('status')
+        if novo_status not in ['agendada', 'confirmada', 'concluida', 'cancelada']:
+            return Response({"error": "Status inválido"}, status=400)
+        consulta.status = novo_status
+        consulta.save()
+        return Response({"message": f"Consulta {novo_status}"})
+
+    elif request.method == 'DELETE':
+        consulta.status = 'cancelada'
+        consulta.save()
+        return Response({"message": "Consulta cancelada"})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def clinica_medicos_lista_api(request):
+    """Lista simplificada de médicos (para selects/dropdowns)."""
+    if not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
+
+    minha_clinica = get_minha_clinica(request.user)
+    perfis = Perfil.objects.filter(
+        tipo='medico', clinica_vinculada=minha_clinica, ativo=True
+    ).select_related('user')
+
+    return Response([{
+        "id": p.user.id,
+        "nome": p.user.get_full_name() or p.user.username,
+        "especialidade": p.especialidade or "",
+    } for p in perfis])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def clinica_pacientes_lista_api(request):
+    """Lista simplificada de pacientes (para selects/dropdowns)."""
+    if not is_admin_clinica(request.user):
+        return Response({"error": "Acesso negado"}, status=403)
+
+    minha_clinica = get_minha_clinica(request.user)
+    medicos_ids = Perfil.objects.filter(
+        tipo='medico', clinica_vinculada=minha_clinica
+    ).values_list('user_id', flat=True)
+
+    pacientes_ids = Consulta.objects.filter(
+        medico_id__in=medicos_ids
+    ).values_list('paciente_id', flat=True).distinct()
+
+    users = User.objects.filter(id__in=pacientes_ids)
+    return Response([{
+        "id": u.id,
+        "nome": u.get_full_name() or u.username,
+    } for u in users])

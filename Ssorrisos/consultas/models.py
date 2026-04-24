@@ -12,7 +12,7 @@ class Clinica(models.Model):
     endereco = models.TextField(blank=True, default='')
     telefone = models.CharField(max_length=20, blank=True, default='')
     email = models.EmailField(unique=True)
-    cnpj = models.CharField(max_length=20, blank=True, default='')
+    NIF = models.CharField(max_length=20, blank=True, default='')
     
     # Status que a dashboard usa: "ativa" | "inativa" | "suspensa"
     status = models.CharField(
@@ -109,7 +109,7 @@ class Perfil(models.Model):
     # Campos extras
     telefone = models.CharField(max_length=20, blank=True, default='')
     endereco = models.TextField(blank=True, default='')
-    cnpj = models.CharField(max_length=20, blank=True, default='')  # Só para admin_clinica
+    NIF = models.CharField(max_length=20, blank=True, default='')  # Só para admin_clinica
     crm = models.CharField(max_length=20, blank=True, default='')  # Só para médicos
     especialidade = models.CharField(max_length=100, blank=True, default='')
     ativo = models.BooleanField(default=True)

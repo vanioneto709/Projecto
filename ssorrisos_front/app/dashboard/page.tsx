@@ -14,7 +14,7 @@ import styles from "./dashboard.module.css";
 // ─── Types ───────────────────────────────────────────────────
 interface Clinica {
   id: number; nome: string; endereco: string; telefone: string; email: string;
-  cnpj?: string; status: "ativa" | "inativa" | "suspensa"; dataCadastro: string;
+  NIF?: string; status: "ativa" | "inativa" | "suspensa"; dataCadastro: string;
   totalMedicos: number; totalPacientes: number; consultasMes: number;
   faturamentoMes: number; cor?: string;
 }
@@ -114,7 +114,7 @@ const salvarEditarUsuario = async () => {
   } catch (err: any) { showToast(err.message, "err"); }
 };
   const [clinicaForm, setClinicaForm] = useState({
-    nome: "", endereco: "", telefone: "", email: "", cnpj: "",
+    nome: "", endereco: "", telefone: "", email: "", NIF: "",
   });
   const [usuarioForm, setUsuarioForm] = useState({
     username: "", email: "", password: "", tipo: "medico",
@@ -243,7 +243,7 @@ const salvarEditarUsuario = async () => {
         endereco: clinicaForm.endereco.trim(),
         telefone: clinicaForm.telefone.trim(),
         email: clinicaForm.email.trim(),
-        cnpj: clinicaForm.cnpj.trim(),
+        NIF: clinicaForm.NIF.trim(),
         status: "ativa",
         dataCadastro: new Date().toISOString(),
       };
@@ -259,7 +259,7 @@ const salvarEditarUsuario = async () => {
         throw new Error(msg);
       }
       setShowClinicaModal(false);
-      setClinicaForm({ nome: "", endereco: "", telefone: "", email: "", cnpj: "" });
+      setClinicaForm({ nome: "", endereco: "", telefone: "", email: "", NIF: "" });
       await fetchClinicas();
       await fetchStats();
       showToast("Clínica criada com sucesso!");
@@ -342,10 +342,12 @@ const salvarEditarUsuario = async () => {
 
   // ─── Util ─────────────────────────────────────────────────
   const logout = () => {
-    localStorage.clear();
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    window.location.href = "/login";
-  };
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+  // Apagar o cookie que o middleware lê
+  document.cookie = "token=; path=/; max-age=0; SameSite=Lax";
+  window.location.replace("/login");
+};
 
   const formatarMoeda = (valor: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor || 0);
@@ -997,12 +999,12 @@ const salvarEditarUsuario = async () => {
                 />
               </div>
               <div className={styles.formField}>
-                <label>CNPJ</label>
+                <label>NIF</label>
                 <input
                   type="text"
                   placeholder="00.000.000/0000-00"
-                  value={clinicaForm.cnpj}
-                  onChange={e => setClinicaForm(f => ({ ...f, cnpj: e.target.value }))}
+                  value={clinicaForm.NIF}
+                  onChange={e => setClinicaForm(f => ({ ...f, NIF: e.target.value }))}
                 />
               </div>
               <div className={styles.formField}>

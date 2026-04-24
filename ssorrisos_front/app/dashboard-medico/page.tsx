@@ -125,8 +125,13 @@ export default function DashboardMedico() {
     finally { setSalvando(false); }
   };
 
-  const logout = () => { localStorage.clear(); window.location.href="/login"; };
-
+const logout = () => {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+  // Apagar o cookie que o middleware lê
+  document.cookie = "token=; path=/; max-age=0; SameSite=Lax";
+  window.location.replace("/login");
+};
   const fmt = (d:string) => { try{ return new Date(d).toLocaleDateString("pt-BR"); }catch{ return d; } };
 
   const hoje = new Date().toISOString().split("T")[0];
