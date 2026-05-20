@@ -174,7 +174,7 @@ export default function HomePage() {
   const podeAvancar = () => {
     if (step === "escolher-clinica") return !!clinicaSelecionada;
     if (step === "dados-paciente") return !!(paciente.nome && paciente.telefone);
-    if (step === "escolher-medico") return !!medicoSelecionado;
+    if (step === "escolher-medico") return true;
     if (step === "escolher-data-hora") return !!(dataSelecionada && horarioSelecionado);
     return true;
   };
@@ -529,38 +529,58 @@ export default function HomePage() {
                       )}
 
                       {/* ── STEP 3: Médico ── */}
-                      {step === "escolher-medico" && (
-                        <div className="hp-step-content">
-                          <div className="hp-info-pill">
-                            <Building2 size={14} />
-                            {clinicaSelecionada?.nome}
-                          </div>
-                          <div className="hp-medico-list">
-                            {loadingData ? (
-                              <div className="hp-loading"><Loader2 size={22} className="hp-spin" />Carregando médicos...</div>
-                            ) : medicos.length === 0 ? (
-                              <div className="hp-empty">
-                                <AlertCircle size={28} />
-                                <p>Nenhum médico disponível</p>
-                              </div>
-                            ) : medicos.map(m => (
-                              <button
-                                key={m.id}
-                                className={`hp-medico-row ${medicoSelecionado?.id === m.id ? "sel" : ""}`}
-                                onClick={() => setMedicoSelecionado(m)}
-                              >
-                                <div className="hp-medico-av">{m.nome[0]}</div>
-                                <div className="hp-medico-info">
-                                  <strong>Dr(a). {m.nome}</strong>
-                                  <span>{m.especialidade}</span>
-                                  <small>CRM: {m.crm}</small>
-                                </div>
-                                {medicoSelecionado?.id === m.id && <CheckCircle size={18} className="hp-sel-check" />}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+               {step === "escolher-medico" && (
+  <div className="hp-step-content">
+    <div className="hp-info-pill">
+      <Building2 size={14} />
+      {clinicaSelecionada?.nome}
+    </div>
+
+    {/* Aviso — médico opcional */}
+    <div style={{
+      padding: "10px 14px", marginBottom: 12,
+      background: "rgba(255,255,255,.04)",
+      border: "1px solid rgba(255,255,255,.08)",
+      borderRadius: 8, fontSize: 13, color: "#8B949E",
+      display: "flex", alignItems: "center", gap: 8,
+    }}>
+      <AlertCircle size={14} style={{flexShrink:0}}/>
+      Opcional — pode avançar sem escolher. A clínica atribuirá um médico disponível.
+    </div>
+
+    <div className="hp-medico-list">
+      {loadingData ? (
+        <div className="hp-loading"><Loader2 size={22} className="hp-spin" />Carregando médicos...</div>
+      ) : medicos.length === 0 ? (
+        <div className="hp-empty">
+          <AlertCircle size={28} />
+          <p>Nenhum médico disponível</p>
+        </div>
+      ) : medicos.map(m => (
+        <button
+          key={m.id}
+          className={`hp-medico-row ${medicoSelecionado?.id === m.id ? "sel" : ""}`}
+          onClick={() => setMedicoSelecionado(prev => prev?.id === m.id ? null : m)}
+        >
+          <div className="hp-medico-av">{m.nome[0]}</div>
+          <div className="hp-medico-info">
+            <strong>Dr(a). {m.nome}</strong>
+            <span>{m.especialidade}</span>
+            <small>CRM: {m.crm}</small>
+          </div>
+          {medicoSelecionado?.id === m.id && <CheckCircle size={18} className="hp-sel-check" />}
+        </button>
+      ))}
+    </div>
+
+    {medicoSelecionado && (
+      <button onClick={() => setMedicoSelecionado(null)}
+        style={{fontSize:12,color:"#8B949E",marginTop:8,background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>
+        ✕ Limpar selecção
+      </button>
+    )}
+  </div>
+)}
 
                       {/* ── STEP 4: Data & Hora ── */}
                       {step === "escolher-data-hora" && (

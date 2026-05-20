@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Building2, Users, Calendar, Stethoscope, TrendingUp,
   DollarSign, Bell, Settings, LogOut, Plus, Search,
   Edit2, Trash2, CheckCircle, XCircle, AlertCircle, Download,
   FileText, Activity, Clock, MapPin, Phone, Mail,
   UserPlus, X, ChevronLeft, ChevronRight, Power, PowerOff,
-  TriangleAlert, Filter, RefreshCw, BarChart3
+  TriangleAlert, Filter, RefreshCw, BarChart3, MessageSquare, Send
 } from "lucide-react";
 import styles from "./dashboard.module.css";
 
@@ -39,10 +39,20 @@ interface Notificacao {
   id: number; tipo: "info" | "warning" | "error" | "success";
   titulo: string; mensagem: string; data: string; lida: boolean; link?: string;
 }
+// ─── Mensagens ──
+interface Conversa {
+  id: number; comId: number; comNome: string; comTipo: string; comClinica: string;
+  ultimaMensagem: string; ultimaData: string; naoLidas: number;
+}
+interface Mensagem {
+  id: number; remetenteId: number | null; remetenteNome: string;
+  minha: boolean; sistema: boolean; corpo: string; lida: boolean; criadaEm: string;
+}
+interface Contacto { id: number; nome: string; tipo: string; clinica: string; }
 
 // ─── Constants ──────────────────────────────────────────────
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-type NavSection = "overview" | "clinicas" | "usuarios" | "agenda" | "financeiro" | "relatorios" | "configuracoes";
+type NavSection = "overview" | "clinicas" | "usuarios" | "agenda" | "financeiro" | "relatorios" | "configuracoes"| "mensagens";
 const CORES_CLINICA = ["#58A6FF", "#3FB950", "#D29922", "#F85149", "#A371F7", "#39D3F2", "#FF7B72", "#79C0FF"];
 function authHeader(token: string) { return { Authorization: `Bearer ${token}` }; }
 
@@ -60,7 +70,17 @@ export default function AdminDashboard() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
-
+  // ── Mensagens ──
+  const [conversas, setConversas] = useState<Conversa[]>([]);
+  const [conversaAberta, setConversaAberta] = useState<Conversa | null>(null);
+  const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [novaMensagem, setNovaMensagem] = useState("");
+  const [contactos, setContactos] = useState<Contacto[]>([]);
+  const [showNovaConversa, setShowNovaConversa] = useState(false);
+  const [buscaContacto, setBuscaContacto] = useState("");
+  const [naoLidasTotal, setNaoLidasTotal] = useState(0);
+  const [enviando, setEnviando] = useState(false);
+  const mensagensEndRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotificacoes, setShowNotificacoes] = useState(false);
@@ -149,6 +169,9 @@ const salvarEditarUsuario = async () => {
     const id = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+    useEffect(() => {
+    mensagensEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [mensagens]);
 
   const carregarTodosDados = async () => {
     setLoading(true);
@@ -156,6 +179,7 @@ const salvarEditarUsuario = async () => {
       await Promise.allSettled([
         fetchStats(), fetchClinicas(), fetchUsuarios(),
         fetchConsultas(), fetchNotificacoes(),
+        fetchConversas(), fetchNaoLidas(),
       ]);
     } finally { setLoading(false); }
   };
@@ -228,6 +252,81 @@ const salvarEditarUsuario = async () => {
       const res = await fetch(`${API_URL}/api/notificacoes/`, { headers: authHeader(token) });
       if (res.ok) setNotificacoes(await res.json());
     } catch { /* silencioso */ }
+  };
+
+    // ─── Fetches de Mensagens ─────────────────────────────────
+  const fetchConversas = async () => {
+    if (!token) return;
+    try {
+      const r = await fetch(`${API_URL}/api/mensagens/`, { headers: authHeader(token) });
+      if (r.ok) setConversas(await r.json());
+    } catch {}
+  };
+  const fetchNaoLidas = async () => {
+    if (!token) return;
+    try {
+      const r = await fetch(`${API_URL}/api/mensagens/nao-lidas/`, { headers: authHeader(token) });
+      if (r.ok) { const d = await r.json(); setNaoLidasTotal(d.naoLidas); }
+    } catch {}
+  };
+  const fetchContactos = async () => {
+    if (!token) return;
+    try {
+      const r = await fetch(`${API_URL}/api/mensagens/contactos/`, { headers: authHeader(token) });
+      if (r.ok) setContactos(await r.json());
+    } catch {}
+  };
+  const abrirConversa = async (c: Conversa) => {
+    setConversaAberta(c);
+    if (!token) return;
+    try {
+      const r = await fetch(`${API_URL}/api/mensagens/${c.id}/`, { headers: authHeader(token) });
+      if (r.ok) {
+        setMensagens(await r.json());
+        fetchConversas();
+        fetchNaoLidas();
+      }
+    } catch {}
+  };
+  const enviarMensagem = async () => {
+    if (!token || !conversaAberta || !novaMensagem.trim() || enviando) return;
+    setEnviando(true);
+    try {
+      const r = await fetch(`${API_URL}/api/mensagens/${conversaAberta.id}/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader(token) },
+        body: JSON.stringify({ mensagem: novaMensagem.trim() }),
+      });
+      if (r.ok) {
+        const msg = await r.json();
+        setMensagens(prev => [...prev, msg]);
+        setNovaMensagem("");
+        fetchConversas();
+      }
+    } catch {}
+    finally { setEnviando(false); }
+  };
+  const iniciarConversa = async (contacto: Contacto) => {
+    if (!token) return;
+    try {
+      const r = await fetch(`${API_URL}/api/mensagens/nova/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader(token) },
+        body: JSON.stringify({ destinatarioId: contacto.id, mensagem: "Olá!" }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        setShowNovaConversa(false);
+        setBuscaContacto("");
+        await fetchConversas();
+        const conv = conversas.find(c => c.id === data.conversaId) || {
+          id: data.conversaId, comId: contacto.id, comNome: contacto.nome,
+          comTipo: contacto.tipo, comClinica: contacto.clinica,
+          ultimaMensagem: "Olá!", ultimaData: "", naoLidas: 0,
+        };
+        abrirConversa(conv as Conversa);
+      }
+    } catch {}
   };
 
   // ─── CRUD Clínicas ────────────────────────────────────────
@@ -421,6 +520,7 @@ const salvarEditarUsuario = async () => {
     financeiro: "Financeiro",
     relatorios: "Relatórios",
     configuracoes: "Configurações",
+    mensagens: "Mensagens",
   };
 
   const navMain: [NavSection, any, string, number | null][] = [
@@ -428,6 +528,7 @@ const salvarEditarUsuario = async () => {
     ["clinicas", Building2, "Clínicas", clinicas.length],
     ["usuarios", Users, "Usuários", usuarios.length],
     ["agenda", Calendar, "Agenda Geral", consultas.filter(c => c.status === "agendada").length],
+    ["mensagens", MessageSquare, "Mensagens", naoLidasTotal],
   ];
 
   const navManage: [NavSection, any, string][] = [
@@ -934,6 +1035,7 @@ const salvarEditarUsuario = async () => {
               </div>
             </>
           )}
+          
 
           {/* ════════ PLACEHOLDERS ════════ */}
           {activeSection === "financeiro" && (
@@ -973,6 +1075,94 @@ const salvarEditarUsuario = async () => {
                 <li>Integrações (WhatsApp, Email)</li>
                 <li>Backup e segurança</li>
               </ul>
+            </div>
+          )}
+                    {/* ════════════════ MENSAGENS ════════════════ */}
+          {activeSection === "mensagens" && (
+            <div style={{ display: "flex", height: "calc(100vh - 140px)", overflow: "hidden", border: "1px solid #30363d", borderRadius: 12, background: "#161b22" }}>
+              {/* Lista de conversas */}
+              <div style={{ width: 300, borderRight: "1px solid #30363d", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+                <div style={{ padding: "16px", borderBottom: "1px solid #30363d", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "#e6edf3" }}>Conversas</span>
+                  <button onClick={() => { fetchContactos(); setShowNovaConversa(true); }} style={{ background: "#1f6feb", border: "none", borderRadius: 6, color: "#fff", padding: "5px 10px", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                    <Plus size={12} /> Nova
+                  </button>
+                </div>
+                <div style={{ flex: 1, overflowY: "auto" }}>
+                  {conversas.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 32, color: "#8B949E", fontSize: 13 }}>
+                      <MessageSquare size={28} style={{ marginBottom: 8, opacity: .4 }} /><br />Sem conversas ainda
+                    </div>
+                  ) : conversas.map(c => (
+                    <div key={c.id} onClick={() => abrirConversa(c)} style={{ padding: "14px 16px", borderBottom: "1px solid #21262d", cursor: "pointer", background: conversaAberta?.id === c.id ? "#1f2937" : "transparent", transition: "background .13s" }}
+                      onMouseEnter={e => { if (conversaAberta?.id !== c.id) e.currentTarget.style.background = "#161b22"; }}
+                      onMouseLeave={e => { if (conversaAberta?.id !== c.id) e.currentTarget.style.background = "transparent"; }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#1f6feb22", color: "#58A6FF", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                          {c.comNome[0]?.toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontWeight: 600, fontSize: 13, color: "#e6edf3" }}>{c.comNome}</span>
+                            {c.naoLidas > 0 && <span style={{ background: "#F85149", color: "#fff", borderRadius: 99, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{c.naoLidas}</span>}
+                          </div>
+                          <p style={{ fontSize: 11, color: "#8B949E", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.ultimaMensagem || "Sem mensagens"}</p>
+                          <p style={{ fontSize: 10, color: "#6e7681", marginTop: 1 }}>{c.comTipo} {c.comClinica !== "—" ? `· ${c.comClinica}` : ""}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Área do chat */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                {conversaAberta ? (
+                  <>
+                    <div style={{ padding: "14px 20px", borderBottom: "1px solid #30363d", display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#1f6feb22", color: "#58A6FF", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14 }}>{conversaAberta.comNome[0]?.toUpperCase()}</div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#e6edf3" }}>{conversaAberta.comNome}</div>
+                        <div style={{ fontSize: 11, color: "#8B949E" }}>{conversaAberta.comTipo}{conversaAberta.comClinica !== "—" ? ` · ${conversaAberta.comClinica}` : ""}</div>
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+                      {mensagens.map(m => (
+                        <div key={m.id} style={{ display: "flex", justifyContent: m.sistema ? "center" : m.minha ? "flex-end" : "flex-start" }}>
+                          {m.sistema ? (
+                            <div style={{ background: "#21262d", border: "1px solid #30363d", borderRadius: 8, padding: "6px 12px", fontSize: 11, color: "#8B949E", maxWidth: "70%", textAlign: "center", whiteSpace: "pre-line" }}>{m.corpo}</div>
+                          ) : (
+                            <div style={{ maxWidth: "70%" }}>
+                              {!m.minha && <div style={{ fontSize: 10, color: "#8B949E", marginBottom: 3, paddingLeft: 4 }}>{m.remetenteNome}</div>}
+                              <div style={{ background: m.minha ? "#1f6feb" : "#21262d", color: m.minha ? "#fff" : "#e6edf3", borderRadius: m.minha ? "12px 12px 2px 12px" : "12px 12px 12px 2px", padding: "8px 14px", fontSize: 13, lineHeight: 1.5 }}>{m.corpo}</div>
+                              <div style={{ fontSize: 10, color: "#6e7681", marginTop: 3, textAlign: m.minha ? "right" : "left", paddingLeft: 4, paddingRight: 4 }}>{m.criadaEm}</div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <div ref={mensagensEndRef} />
+                    </div>
+                    <div style={{ padding: "12px 20px", borderTop: "1px solid #30363d", display: "flex", gap: 10, alignItems: "center" }}>
+                      <input value={novaMensagem} onChange={e => setNovaMensagem(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensagem(); } }}
+                        placeholder="Escreve uma mensagem..."
+                        style={{ flex: 1, background: "#21262d", border: "1px solid #30363d", borderRadius: 8, color: "#e6edf3", padding: "9px 14px", fontSize: 13, outline: "none" }} />
+                      <button onClick={enviarMensagem} disabled={!novaMensagem.trim() || enviando}
+                        style={{ background: novaMensagem.trim() ? "#1f6feb" : "#21262d", border: "none", borderRadius: 8, color: "#fff", padding: "9px 14px", cursor: novaMensagem.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, fontSize: 13, transition: "background .13s" }}>
+                        <Send size={14} />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#8B949E", gap: 12 }}>
+                    <MessageSquare size={48} style={{ opacity: .2 }} />
+                    <p style={{ fontSize: 14 }}>Selecciona uma conversa para começar</p>
+                    <button onClick={() => { fetchContactos(); setShowNovaConversa(true); }} style={{ background: "#1f6feb", border: "none", borderRadius: 8, color: "#fff", padding: "8px 16px", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                      <Plus size={14} /> Nova conversa
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>
@@ -1257,6 +1447,40 @@ const salvarEditarUsuario = async () => {
               <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={criarUsuario}>
                 <UserPlus size={15} /> Criar Usuário
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+            {/* ─── MODAL: Nova Conversa ─── */}
+      {showNovaConversa && (
+        <div className={styles.modalOverlay} onClick={() => setShowNovaConversa(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3><MessageSquare size={18} /> Nova Conversa</h3>
+              <button className={styles.modalClose} onClick={() => setShowNovaConversa(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div style={{ position: "relative", marginBottom: 12 }}>
+                <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#8B949E" }} />
+                <input value={buscaContacto} onChange={e => setBuscaContacto(e.target.value)} placeholder="Procurar contacto..." style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", borderRadius: 6, color: "#e6edf3", padding: "8px 10px 8px 32px", fontSize: 13, outline: "none" }} />
+              </div>
+              <div style={{ maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+                {contactos.filter(c => c.nome.toLowerCase().includes(buscaContacto.toLowerCase())).length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 20, color: "#8B949E", fontSize: 13 }}>Nenhum contacto encontrado</div>
+                ) : contactos.filter(c => c.nome.toLowerCase().includes(buscaContacto.toLowerCase())).map(c => (
+                  <button key={c.id} onClick={() => iniciarConversa(c)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, border: "1px solid #30363d", background: "#0d1117", cursor: "pointer", textAlign: "left", transition: "border-color .13s", width: "100%" }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = "#1f6feb"}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = "#30363d"}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#1f6feb22", color: "#58A6FF", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{c.nome[0]?.toUpperCase()}</div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#e6edf3" }}>{c.nome}</div>
+                      <div style={{ fontSize: 11, color: "#8B949E" }}>{c.tipo}{c.clinica !== "—" ? ` · ${c.clinica}` : ""}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

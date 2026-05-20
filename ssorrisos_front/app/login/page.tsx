@@ -44,7 +44,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError("Usuário ou senha inválidos");
+        setError(data.detail ||"Usuário ou senha inválidos");
         return;
       }
 
@@ -79,8 +79,9 @@ export default function LoginPage() {
       console.error("Erro no login:", err);
       setError("Erro no servidor");
     }
-
+finally {
     setIsLoading(false);
+    }
   };
   // ─── FIM LÓGICA ─────────────────────────────────────────────
 

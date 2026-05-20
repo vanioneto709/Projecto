@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
-from django.utils.html import format_html
+from django.utils.html import format_html, mark_safe
 from datetime import date
 
 from .models import Clinica, Perfil, Consulta
@@ -11,7 +11,7 @@ from .models import Clinica, Perfil, Consulta
 # CONFIGURAÇÃO DO ADMIN
 # ============================================
 
-admin.site.site_header = "🏥 Sistema de Gestão Clínica"
+admin.site.site_header = "Sistema de Gestao Clinica"
 admin.site.site_title = "Painel Admin"
 admin.site.index_title = "Dashboard Administrativo"
 
@@ -28,7 +28,7 @@ class SGBDAdminMixin:
 class PerfilInline(admin.StackedInline):
     model = Perfil
     can_delete = False
-    verbose_name_plural = 'Perfil do Usuário'
+    verbose_name_plural = 'Perfil do Usuario'
     fields = ('tipo', 'clinica_vinculada', 'telefone', 'crm', 'especialidade', 'ativo', 'ultimo_acesso')
     readonly_fields = ('ultimo_acesso',)
 
@@ -47,7 +47,7 @@ class UserAdminCustom(UserAdmin):
 
     def get_tipo(self, obj):
         if not hasattr(obj, 'perfil'):
-            return format_html('<span style="color:#999;">SEM PERFIL</span>')
+            return mark_safe('<span style="color:#999;">SEM PERFIL</span>')
 
         tipo = obj.perfil.tipo
 
@@ -61,10 +61,10 @@ class UserAdminCustom(UserAdmin):
 
         labels = {
             'admin': 'ADMIN SISTEMA',
-            'admin_clinica': 'ADMIN CLÍNICA',
-            'medico': 'MÉDICO',
+            'admin_clinica': 'ADMIN CLINICA',
+            'medico': 'MEDICO',
             'paciente': 'PACIENTE',
-            'recepcionista': 'RECEPÇÃO'
+            'recepcionista': 'RECEPCAO'
         }
 
         return format_html(
@@ -77,14 +77,14 @@ class UserAdminCustom(UserAdmin):
 
     def get_clinica(self, obj):
         if not hasattr(obj, 'perfil') or not obj.perfil.clinica_vinculada:
-            return format_html('<span style="color:#666;">—</span>')
+            return mark_safe('<span style="color:#666;">--</span>')
 
         return format_html(
-            '<span style="color:#4ecdc4;">🏥 {}</span>',
+            '<span style="color:#4ecdc4;">[C] {}</span>',
             obj.perfil.clinica_vinculada.nome[:25]
         )
 
-    get_clinica.short_description = 'Clínica'
+    get_clinica.short_description = 'Clinica'
 
 
 admin.site.unregister(User)
@@ -92,7 +92,7 @@ admin.site.register(User, UserAdminCustom)
 
 
 # ============================================
-# CLÍNICA ADMIN
+# CLINICA ADMIN
 # ============================================
 
 @admin.register(Clinica)
@@ -101,7 +101,7 @@ class ClinicaAdmin(SGBDAdminMixin, admin.ModelAdmin):
     list_display = (
         'id',
         'nome_destaque',
-        'cnpj_formatado',
+        'nif_formatado',
         'contatos',
         'stats_resumo',
         'status',
@@ -111,44 +111,47 @@ class ClinicaAdmin(SGBDAdminMixin, admin.ModelAdmin):
 
     list_display_links = ('nome_destaque',)
     list_filter = ('status', 'criada_em')
-    search_fields = ('nome', 'cnpj', 'email', 'telefone')
+    search_fields = ('nome', 'NIF', 'email', 'telefone')
     ordering = ('-criada_em',)
     date_hierarchy = 'criada_em'
     list_editable = ('status',)
 
     def nome_destaque(self, obj):
-        return format_html('<b>{}</b>', obj.nome)
+        return format_html('<b>{}</b>', obj.nome or '')
 
     nome_destaque.short_description = 'Nome'
 
-    def cnpj_formatado(self, obj):
-        if obj.cnpj:
-            cnpj = obj.cnpj.replace('.', '').replace('/', '').replace('-', '')
-
-            if len(cnpj) == 14:
+    def nif_formatado(self, obj):
+        nif = obj.NIF or ''
+        if nif:
+            nif_limpo = nif.replace('.', '').replace('/', '').replace('-', '')
+            if len(nif_limpo) == 14:
                 return format_html(
                     '<code style="color:#4ecdc4;">{}.{}.{}/{}-{}</code>',
-                    cnpj[:2], cnpj[2:5], cnpj[5:8], cnpj[8:12], cnpj[12:]
+                    nif_limpo[:2], nif_limpo[2:5], nif_limpo[5:8], nif_limpo[8:12], nif_limpo[12:]
                 )
+        return mark_safe('<span style="color:#666;">--</span>')
 
-        return format_html('<span style="color:#666;">—</span>')
-
-    cnpj_formatado.short_description = 'CNPJ'
+    nif_formatado.short_description = 'NIF'
 
     def contatos(self, obj):
+        email = obj.email or '--'
+        telefone = obj.telefone or '--'
         return format_html(
-            '<div>📧 {}<br>📱 {}</div>',
-            obj.email or '—',
-            obj.telefone or '—'
+            '<div>Email: {}<br>Tel: {}</div>',
+            email,
+            telefone
         )
 
     contatos.short_description = 'Contatos'
 
     def stats_resumo(self, obj):
+        medicos = getattr(obj, 'totalMedicos', 0) or 0
+        pacientes = getattr(obj, 'totalPacientes', 0) or 0
         return format_html(
-            '👨‍⚕️ {} médicos | 🧑‍⚕️ {} pacientes',
-            getattr(obj, 'totalMedicos', 0),
-            getattr(obj, 'totalPacientes', 0)
+            'Medicos: {} | Pacientes: {}',
+            str(medicos),
+            str(pacientes)
         )
 
     stats_resumo.short_description = 'Stats'
@@ -159,11 +162,13 @@ class ClinicaAdmin(SGBDAdminMixin, admin.ModelAdmin):
             'inativa': '#da3633',
             'suspensa': '#d29922'
         }
-
+        status_valor = obj.status or 'inativa'
+        cor = cores.get(status_valor, '#666')
+        label = obj.get_status_display() or status_valor
         return format_html(
             '<span style="background:{}; color:white; padding:3px 8px; border-radius:10px;">{}</span>',
-            cores.get(obj.status, '#666'),
-            obj.get_status_display()
+            cor,
+            label
         )
 
     status_badge.short_description = 'Status'
@@ -210,7 +215,7 @@ class ConsultaAdmin(SGBDAdminMixin, admin.ModelAdmin):
         return obj.paciente.username
 
     def medico_info(self, obj):
-        return obj.medico.username if obj.medico else "—"
+        return obj.medico.username if obj.medico else "--"
 
     def status_colorido(self, obj):
         cores = {

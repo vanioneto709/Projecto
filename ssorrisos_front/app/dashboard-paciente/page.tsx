@@ -57,7 +57,9 @@ export default function DashboardPaciente() {
   const [loading, setLoading]           = useState(true);
   const [agendado, setAgendado]         = useState(false);
   const [toast, setToast]               = useState<{msg:string;type:"ok"|"err"}|null>(null);
-
+  const [prontuario, setProntuario] = useState<any | null>(null);
+  const [loadingProntuario, setLoadingProntuario] = useState(false);
+  const [prontuarioErro, setProntuarioErro] = useState("");
   // Agendamento
   const [agStep, setAgStep]             = useState<AgStep>("medico");
   const [medicoSel, setMedicoSel]       = useState<Medico|null>(null);
@@ -79,7 +81,7 @@ export default function DashboardPaciente() {
     fetch(`${API}/api/me/`,{headers:authH(t)}).then(r=>r.json()).then(setMe).catch(()=>{});
   },[]);
 
-  useEffect(()=>{ if(token){ fetchConsultas(); fetchMedicos(); } },[token]);
+  useEffect(()=>{ if(token){ fetchConsultas(); fetchMedicos(); fetchProntuario(); } },[token]);
 
   const fetchConsultas = async () => {
     if(!token) return;
@@ -89,7 +91,18 @@ export default function DashboardPaciente() {
       if(r.ok) setConsultas(await r.json());
     } catch { } finally { setLoading(false); }
   };
-
+  const fetchProntuario = async () => {
+  if (!token) return;
+  setLoadingProntuario(true);
+  setProntuarioErro("");
+  try {
+    const r = await fetch(`${API}/api/paciente/prontuario/`, { headers: authH(token) });
+    if (r.ok) setProntuario(await r.json());
+    else if (r.status === 404) setProntuarioErro("O teu prontuário ainda não foi criado. Pede ao teu médico.");
+    else setProntuarioErro("Erro ao carregar prontuário.");
+  } catch { setProntuarioErro("Erro de ligação."); }
+  finally { setLoadingProntuario(false); }
+};
   const fetchMedicos = async () => {
     if(!token) return;
     try {
@@ -199,6 +212,7 @@ const logout = () => {
               ["consultas", Calendar, "Minhas Consultas"],
               ["agendar",   Plus,     "Agendar Consulta"],
               ["perfil",    User,     "Meu Perfil"],
+              ["prontuario", FileText, "Meu Prontuário"],
             ] as [Secao,any,string][]).map(([id,Icon,label])=>(
               <button key={id} className={`dp-nav-btn ${secao===id?"active":""}`}
                 onClick={()=>{ setSecao(id); if(id==="agendar") resetAgendar(); }}>
@@ -341,6 +355,81 @@ const logout = () => {
               ))}
             </div>
           )}
+          {/* ════ PRONTUÁRIO ════ */}
+{secao === "prontuario" && (
+  <div className="dp-section">
+    <div className="dp-page-header">
+      <h2>Meu Prontuário</h2>
+    </div>
+    {loadingProntuario ? (
+      <div className="dp-empty"><Loader2 size={28} className="spinning"/><p>A carregar...</p></div>
+    ) : prontuarioErro ? (
+      <div className="dp-empty"><FileText size={36}/><p>{prontuarioErro}</p></div>
+    ) : prontuario && (
+      <>
+        {/* Info clínica */}
+        <div className="dp-card" style={{marginBottom:14}}>
+          <div className="dp-card-header"><span><FileText size={14}/> Informação Clínica</span></div>
+          <div style={{padding:16,display:"flex",flexDirection:"column",gap:12}}>
+            {[
+              ["Médico Preferencial", prontuario.medicoPreferencial?.nome || "—"],
+              ["Alergias", prontuario.alergias || "Nenhuma registada"],
+              ["Medicamentos em uso", prontuario.medicamentosEmUso || "Nenhum"],
+              ["Doenças sistémicas", prontuario.doencasSistemicas || "Nenhuma"],
+              ["Observações do médico", prontuario.observacoes || "—"],
+            ].map(([label, valor]) => (
+              <div key={label}>
+                <p style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",marginBottom:3}}>{label}</p>
+                <p style={{fontSize:13,color:"var(--text)"}}>{valor}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{padding:"10px 16px",borderTop:"1px solid var(--border2)",fontSize:11,color:"var(--text3)"}}>
+            Actualizado em {prontuario.atualizadoEm} por {prontuario.atualizadoPor}
+          </div>
+        </div>
+
+        {/* Histórico de procedimentos */}
+        <div className="dp-card" style={{marginBottom:14}}>
+          <div className="dp-card-header"><span><History size={14}/> Histórico de Procedimentos</span></div>
+          {prontuario.procedimentos?.length === 0 ? (
+            <div className="dp-empty-sm">Sem procedimentos registados</div>
+          ) : prontuario.procedimentos?.map((p: any) => (
+            <div key={p.id} style={{padding:"11px 16px",borderBottom:"1px solid var(--border2)"}}>
+              <strong style={{fontSize:13}}>{p.tipoLabel}{p.dente ? ` — Dente ${p.dente}` : ""}</strong>
+              <p style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{p.data} · Dr(a). {p.medico}</p>
+              {p.descricao && <p style={{fontSize:12,color:"var(--text2)",marginTop:3}}>{p.descricao}</p>}
+            </div>
+          ))}
+        </div>
+
+        {/* Raio-X e anexos */}
+        {prontuario.anexos?.length > 0 && (
+          <div className="dp-card">
+            <div className="dp-card-header"><span><FileText size={14}/> Raio-X e Exames</span></div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12,padding:16}}>
+              {prontuario.anexos.map((a: any) => (
+                <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" style={{border:"1px solid var(--border)",borderRadius:8,overflow:"hidden",display:"block",textDecoration:"none",color:"inherit"}}>
+                  {a.url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
+                    <img src={a.url} alt={a.titulo} style={{width:"100%",height:100,objectFit:"cover"}}/>
+                  ) : (
+                    <div style={{height:100,display:"flex",alignItems:"center",justifyContent:"center",background:"var(--surface-2)",color:"var(--text3)"}}>
+                      <FileText size={28}/>
+                    </div>
+                  )}
+                  <div style={{padding:"7px 10px"}}>
+                    <p style={{fontSize:12,fontWeight:700}}>{a.titulo}</p>
+                    <p style={{fontSize:11,color:"var(--text3)"}}>{a.tipoLabel} · {a.dataExame}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+)}
 
           {/* ════ AGENDAR ════ */}
           {secao==="agendar" && (
